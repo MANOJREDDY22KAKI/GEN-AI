@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Report Data Analyst</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db; /* gray-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f3f4f6; /* gray-100 */
+        }
+        /* Custom font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .chat-container {
+            max-height: 70vh;
+        }
+    </style>
+    <script>
+        // Global environment variables provided by the Canvas runtime
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        // Utility function for base64 encoding/decoding (not strictly needed for text, but good practice)
+        function base64ToArrayBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // --- Core Application Logic ---
+
+        const APP_STATE = {
+            chatHistory: [],
+            isProcessing: false,
+            // Exponential backoff settings
+            maxRetries: 5,
+            initialDelay: 1000 // 1 second
+        };
+
+        // DOM elements
+        let chatWindow;
+        let userInput;
+        let reportDataInput;
+        let submitButton;
+        let loadingIndicator;
+        let errorContainer;
+
+        // Utility to display messages (User and AI)
+        function appendMessage(sender, text, isError = false) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'flex mb-4 last:mb-0';
+
+            const alignment = sender === 'user' ? 'justify-end' : 'justify-start';
+            const bgColor = sender === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 border border-gray-200';
+            const borderRadius = sender === 'user' ? 'rounded-tl-xl rounded-bl-xl rounded-br-xl' : 'rounded-tr-xl rounded-br-xl rounded-bl-xl';
+
+            messageElement.classList.add(alignment);
+
+            messageElement.innerHTML = `
+                <div class="max-w-3xl px-4 py-3 shadow-lg ${bgColor} ${borderRadius}">
+                    <div class="font-semibold mb-1 ${sender === 'user' ? 'text-indigo-200' : 'text-indigo-600'}">${sender === 'user' ? 'You' : 'AI Analyst'}</div>
+                    <div class="${isError ? 'text-red-500 font-medium' : ''}">${text.replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
+            chatWindow.appendChild(messageElement);
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // Checks if both inputs have content and enables/disables the button
+        function checkInputs() {
+            const hasData = reportDataInput.value.trim().length > 0;
+            const hasQuery = userInput.value.trim().length > 0;
+            // Only enable if both fields have content AND we are not processing a previous request
+            submitButton.disabled = !(hasData && hasQuery) || APP_STATE.isProcessing;
+        }
+
+
+        function toggleLoading(isLoading) {
+            APP_STATE.isProcessing = isLoading;
+            loadingIndicator.style.display = isLoading ? 'block' : 'none';
+            userInput.disabled = isLoading;
+            reportDataInput.disabled = isLoading; // Disable data input during processing
+            // Re-check inputs to determine final button state
+            checkInputs(); 
+        }
+
+        function clearError() {
+            errorContainer.textContent = '';
+            errorContainer.classList.add('hidden');
+        }
+
+        function displayError(message) {
+            errorContainer.textContent = `Error: ${message}`;
+            errorContainer.classList.remove('hidden');
+        }
+
+
+        // --- API Call Function with Retry Logic ---
+        async function fetchWithBackoff(url, options, attempt = 1) {
+            try {
+                const response = await fetch(url, options);
+
+                if (!response.ok) {
+                    // Check for rate limiting or server errors (e.g., 429, 500)
+                    if (response.status === 429 || response.status >= 500) {
+                        throw new Error(`Server error or rate limit exceeded (Status: ${response.status})`);
+                    }
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                return response;
+            } catch (error) {
+                if (attempt < APP_STATE.maxRetries) {
+                    const delay = APP_STATE.initialDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+                    console.warn(`Attempt ${attempt} failed. Retrying in ${Math.round(delay / 1000)}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithBackoff(url, options, attempt + 1);
+                } else {
+                    console.error("Max retries reached. Failing request.");
+                    throw error;
+                }
+            }
+        }
+
+
+        async function sendMessage() {
+            const userQuery = userInput.value.trim();
+            const reportData = reportDataInput.value.trim();
+            clearError();
+
+            if (!userQuery) {
+                displayError("Please enter a question to analyze the data.");
+                return;
+            }
+
+            if (!reportData) {
+                displayError("Please paste your SSRS report data (text/CSV) above.");
+                return;
+            }
+            
+            toggleLoading(true);
+            appendMessage('user', userQuery);
+            userInput.value = ''; // Clear input after sending
+            checkInputs(); // Re-check to disable the button since the query input is now empty
+
+            // 1. Construct the combined prompt for RAG simulation
+            const systemInstruction = `You are a world-class Data Analyst AI. Your task is to analyze the user's question in the context of the provided report data.
+            1. Analyze the data meticulously, treating it as tabular (CSV or similar structure).
+            2. Answer the user's question based ONLY on the data provided in the 'REPORT DATA' section.
+            3. If the answer cannot be determined from the data, state that clearly.
+            4. Provide a clear, concise, and professional response, summarizing any key findings before answering the specific question.`;
+            
+            const fullPrompt = `QUESTION: ${userQuery}\n\n--- REPORT DATA ---\n${reportData}`;
+            
+            // 2. Prepare the API payload
+            const payload = {
+                contents: [{ parts: [{ text: fullPrompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                // Note: We intentionally DO NOT use google_search tool here, as the focus is on the private, uploaded data.
+            };
+
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            };
+
+            try {
+                const response = await fetchWithBackoff(apiUrl, options);
+                const result = await response.json();
+
+                const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response. The model output was empty.";
+                
+                // 3. Update history and display response
+                APP_STATE.chatHistory.push({ role: 'user', text: userQuery });
+                APP_STATE.chatHistory.push({ role: 'ai', text: aiResponse });
+
+                appendMessage('ai', aiResponse);
+
+            } catch (error) {
+                console.error("API Request Failed:", error);
+                displayError(`Failed to connect or process the request. Please check the console for details.`);
+                appendMessage('ai', "I apologize, but I encountered a system error while trying to analyze your data.", true);
+            } finally {
+                toggleLoading(false); // Enable inputs and re-check button status
+            }
+        }
+
+        function setupEventListeners() {
+            chatWindow = document.getElementById('chat-window');
+            userInput = document.getElementById('user-input');
+            reportDataInput = document.getElementById('report-data-input');
+            submitButton = document.getElementById('submit-button');
+            loadingIndicator = document.getElementById('loading-indicator');
+            errorContainer = document.getElementById('error-container');
+
+            // Add event listeners for input validation
+            userInput.addEventListener('input', checkInputs);
+            reportDataInput.addEventListener('input', checkInputs);
+
+            submitButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !submitButton.disabled) {
+                    sendMessage();
+                }
+            });
+
+            // Initial check to set the button state correctly
+            checkInputs();
+
+            // Initial welcome message
+            appendMessage('ai', "Welcome! Paste the text or CSV content of your SSRS report into the 'Report Data' box above, and then ask a question to begin the analysis. For example: 'What is the total sales for the North region?'");
+        }
+
+        window.onload = setupEventListeners;
+    </script>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div class="max-w-5xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-8">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 border-b pb-2">
+            AI SSRS Report Data Analyst
+        </h1>
+
+        <!-- 1. Report Data Input (The Context) -->
+        <div class="mb-6">
+            <label for="report-data-input" class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
+                Report Data (Paste Text or CSV Content Below)
+                <span class="text-xs text-gray-500 font-normal">Max recommended size: ~10,000 characters</span>
+            </label>
+            <textarea id="report-data-input" rows="8" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-sm" placeholder="Paste your report data (e.g., copy-pasted text, CSV content, or tables) here. Example:\n\nRegion,Product,Sales\nNorth,Laptop,120000\nSouth,Monitor,45000\nNorth,Keyboard,15000\nWest,Laptop,90000\nSouth,Keyboard,10000"></textarea>
+        </div>
+
+        <!-- 2. Chat Window -->
+        <div id="chat-window" class="chat-container overflow-y-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+            <!-- Messages will be appended here -->
+        </div>
+
+        <!-- Error Container -->
+        <div id="error-container" class="hidden p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg mb-4 text-sm font-medium"></div>
+
+        <!-- 3. User Input & Controls -->
+        <div class="flex items-end space-x-3">
+            <div id="loading-indicator" class="hidden text-indigo-600 text-sm italic py-2">
+                Analyzing report data...
+            </div>
+            
+            <input type="text" id="user-input" placeholder="Ask a question about the data..."
+                   class="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm disabled:bg-gray-100"
+                   autocomplete="off">
+                   
+            <button id="submit-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition duration-150 ease-in-out disabled:bg-indigo-400">
+                Analyze
+            </button>
+        </div>
+
+    </div>
+</body>
+</html>
