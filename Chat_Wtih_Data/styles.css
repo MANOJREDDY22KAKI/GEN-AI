@@ -1,0 +1,32 @@
+/* Custom font */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f7f9fb;
+}
+
+/* Adjusted for new layout */
+.chat-container {
+    max-height: 50vh;
+}
+
+.extracted-content-container {
+    max-height: 200px;
+    overflow-y: scroll;
+    white-space: pre-wrap; /* Preserve formatting */
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db; /* gray-300 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f3f4f6; /* gray-100 */
+}
