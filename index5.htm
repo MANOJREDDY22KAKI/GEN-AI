@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sprint Planning Workbench</title>
+    <style>
+        /* Basic Styling for the Mock-up */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f9;
+        }
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        h1 {
+            color: #1a202c;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #4a5568;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        .section-box {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        input[type="date"], input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4c51bf; /* Indigo */
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #5a62c7;
+        }
+        #insights {
+            border-left: 4px solid #4c51bf;
+            padding-left: 15px;
+            margin-top: 20px;
+            background-color: #f0f4ff;
+            color: #2d3748;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .summary-table th, .summary-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            text-align: left;
+        }
+        .summary-table th {
+            background-color: #edf2f7;
+            color: #2d3748;
+        }
+        .export-button-container {
+            text-align: right;
+            margin-top: 30px;
+        }
+        .ai-title {
+            color: #4c51bf;
+            font-weight: bold;
+        }
+        .ticket-input-points {
+            width: 60px;
+            padding: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚀 AI Sprint Planning Workbench</h1>
+        <p>Use this tool to define your sprint scope, calculate capacity, refine the backlog, and generate insights.</p>
+
+        <div class="section-box">
+            <h2>🎯 1. Scope Definition (Team & Sprint)</h2>
+            <div class="form-group">
+                <label for="teamSelect">Select Team</label>
+                <select id="teamSelect" onchange="loadTeamMembers()">
+                    <option value="Alpha">Team Alpha</option>
+                    <option value="Beta">Team Beta</option>
+                    <option value="Gamma">Team Gamma</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sprintName">Sprint Name/ID</label>
+                <input type="text" id="sprintName" value="Sprint 2026-Q1/03" placeholder="e.g., Sprint 2026-Q1/03">
+            </div>
+            <div class="form-group" style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate" value="2025-12-01">
+                </div>
+                <div style="flex: 1;">
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate" value="2025-12-12">
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+
+        <div class="section-box">
+            <h2>🗓️ 2. Resource Planned Leaves</h2>
+            <div class="form-group">
+                <label for="resourceName">Resource Name</label>
+                <select id="resourceName">
+                    </select>
+            </div>
+            <div class="form-group">
+                <label for="leaveDate">Planned Leave Date</label>
+                <input type="date" id="leaveDate">
+            </div>
+            <button onclick="addLeave()">➕ Add Leave</button>
+
+            <h3 style="font-size: 1.2rem; margin-top: 20px;">Current Leaves Submitted</h3>
+            <ul id="leaveList">
+                </ul>
+        </div>
+        
+        <hr>
+
+        <div class="section-box">
+            <h2>🎟️ 3. Ticket Management Workbench</h2>
+            
+            <h3 style="margin-top:0; color: #4a5568;">➕ Add New Ticket (Not in Ticket System)</h3>
+            <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end;">
+                <input type="text" id="manualSummary" placeholder="Ticket Summary (e.g., Small Documentation Update)" style="flex: 3;">
+                <input type="number" id="manualPoints" placeholder="Points" min="1" max="20" style="flex: 1;">
+                <button onclick="addManualTicket()" style="flex-shrink: 0; padding: 10px 15px;">Add Ticket</button>
+            </div>
+
+            <hr style="margin: 20px 0;">
+
+            <h3>📝 Sprint Backlog Review</h3>
+            <button onclick="fetchTickets()">🔁 Fetch Tickets from System & Review</button>
+            
+            <table class="summary-table" id="ticketReviewTable" style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Source</th>
+                        <th>Ticket ID / Summary</th>
+                        <th style="width: 15%; text-align: center;">Story Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+        
+        <hr>
+
+        <div class="section-box">
+            <h2>🧠 4. Capacity & AI Insights Summary</h2>
+            <button onclick="calculateAndAnalyze()">✨ Calculate Capacity & Generate AI Insights</button>
+            
+            <table class="summary-table" id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value (Mock Data)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Total Resources (Selected Team)</td><td id="totalResources">4</td></tr>
+                    <tr><td>Calculated Working Days (Sprint Range)</td><td id="workingDays">10 Days</td></tr>
+                    <tr><td>Total Gross Capacity</td><td id="grossCapacity">40 Person-Days</td></tr>
+                    <tr><td>Total Planned Leaves</td><td id="totalLeaves">1 Day</td></tr>
+                    <tr><td>**Adjusted Net Capacity**</td><td id="netCapacity">**39 Person-Days**</td></tr>
+                </tbody>
+            </table>
+
+            <div id="insights">
+                <p class="ai-title">AI Sprint Insight:</p>
+                <p id="insightText">
+                    (Click "Calculate Capacity & Generate AI Insights" to see dynamic advice here.)
+                </p>
+            </div>
+        </div>
+
+        <div class="export-button-container">
+            <button onclick="exportData()" style="padding: 12px 20px;">💾 Export Full Summary to Excel</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Master Data Structures ---
+        const teams = {
+            "Alpha": ["Alice", "Bob", "Charlie", "David"],
+            "Beta": ["Eve", "Frank", "Grace"],
+            "Gamma": ["Henry", "Ivy", "Jack", "Kate"]
+        };
+
+        // Initial mock tickets (fetched from system)
+        const mockFetchedTickets = [
+            { id: 'TICKET-001', summary: 'Implement User Login (API)', points: 8, source: 'External' },
+            { id: 'TICKET-002', summary: 'Fix Database Connection Bug', points: 3, source: 'External' },
+            { id: 'TICKET-003', summary: 'Optimize Image Upload Service', points: 13, source: 'External' },
+        ];
+
+        // Array to hold the *final, combined* set of tickets for the sprint (fetched + manual)
+        let sprintBacklog = [...mockFetchedTickets]; 
+
+        // Array to hold submitted leaves
+        let leaves = [{ resource: 'Alice', date: '2025-12-05' }];
+
+
+        // --- Core UI Functions ---
+
+        function loadTeamMembers() {
+            const teamName = document.getElementById('teamSelect').value;
+            const resourceSelect = document.getElementById('resourceName');
+            
+            // Clear existing members
+            resourceSelect.innerHTML = ''; 
+            
+            if (teams[teamName]) {
+                teams[teamName].forEach(member => {
+                    const option = document.createElement('option');
+                    option.value = member;
+                    option.textContent = member;
+                    resourceSelect.appendChild(option);
+                });
+                
+                // Update capacity section based on new team size (Mocked 10 sprint days)
+                const numMembers = teams[teamName].length;
+                document.getElementById('totalResources').textContent = numMembers;
+                document.getElementById('grossCapacity').textContent = (numMembers * 10) + ' Person-Days';
+            }
+            
+            // Reset/reload dependent data based on new team
+            leaves = []; // Clear leaves for the new team
+            sprintBacklog = []; // Clear backlog for the new team
+            
+            renderLeaves();
+            renderTicketReviewTable();
+        }
+
+        function addLeave() {
+            const resource = document.getElementById('resourceName').value;
+            const date = document.getElementById('leaveDate').value;
+            
+            if (resource && date) {
+                leaves.push({ resource, date });
+                renderLeaves();
+            } else {
+                alert('Please select a resource and a date.');
+            }
+        }
+
+        function renderLeaves() {
+            const list = document.getElementById('leaveList');
+            list.innerHTML = '';
+            
+            if (leaves.length === 0) {
+                list.innerHTML = '<li>No planned leaves submitted for this team.</li>';
+            } else {
+                leaves.forEach(leave => {
+                    const li = document.createElement('li');
+                    li.textContent = `${leave.resource}: ${leave.date}`;
+                    list.appendChild(li);
+                });
+            }
+
+            // Update capacity display
+            const totalLeaveDays = leaves.length;
+            const grossCapacity = parseInt(document.getElementById('grossCapacity').textContent);
+            const netCapacity = grossCapacity - totalLeaveDays; 
+            
+            document.getElementById('totalLeaves').textContent = `${totalLeaveDays} Day${totalLeaveDays === 1 ? '' : 's'}`;
+            document.getElementById('netCapacity').textContent = `**${netCapacity} Person-Days**`;
+        }
+
+        function addManualTicket() {
+            const summary = document.getElementById('manualSummary').value;
+            const points = parseInt(document.getElementById('manualPoints').value);
+            
+            if (summary && points > 0) {
+                const newTicket = { 
+                    id: 'MANUAL-' + (sprintBacklog.length + 1), 
+                    summary: summary, 
+                    points: points,
+                    source: 'Manual'
+                };
+                sprintBacklog.push(newTicket);
+                document.getElementById('manualSummary').value = '';
+                document.getElementById('manualPoints').value = '';
+                renderTicketReviewTable();
+            } else {
+                alert('Please enter a summary and valid story points (> 0).');
+            }
+        }
+
+        function fetchTickets() {
+            // In a real application, this would fetch filtered tickets via an API call.
+            sprintBacklog = [...mockFetchedTickets]; 
+            renderTicketReviewTable();
+        }
+
+        function renderTicketReviewTable() {
+            const tableBody = document.querySelector('#ticketReviewTable tbody');
+            tableBody.innerHTML = '';
+            let totalPoints = 0;
+            
+            if (sprintBacklog.length === 0) {
+                const row = tableBody.insertRow();
+                row.insertCell(0).colSpan = 3;
+                row.cells[0].textContent = 'No tickets in the backlog. Fetch tickets or add manually.';
+                row.cells[0].style.textAlign = 'center';
+                return;
+            }
+
+            sprintBacklog.forEach((ticket, index) => {
+                const row = tableBody.insertRow();
+                
+                row.insertCell(0).textContent = ticket.source;
+                row.insertCell(1).textContent = `${ticket.id}: ${ticket.summary}`;
+                
+                // Editable Story Points Cell
+                const pointsCell = row.insertCell(2);
+                pointsCell.style.textAlign = 'center';
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '1';
+                input.value = ticket.points;
+                input.className = 'ticket-input-points';
+                input.onchange = (e) => {
+                    sprintBacklog[index].points = parseInt(e.target.value) || 0;
+                };
+                pointsCell.appendChild(input);
+                
+                totalPoints += ticket.points;
+            });
+
+            // Total Points Row
+            const totalRow = tableBody.insertRow();
+            totalRow.style.fontWeight = 'bold';
+            totalRow.insertCell(0).textContent = '';
+            totalRow.insertCell(1).textContent = 'TOTAL ESTIMATED POINTS:';
+            totalRow.insertCell(2).textContent = totalPoints + ' pts';
+            totalRow.cells[2].style.textAlign = 'center';
+        }
+
+        function calculateAndAnalyze() {
+            const team = document.getElementById('teamSelect').value;
+            const sprint = document.getElementById('sprintName').value;
+            const netCapacity = parseInt(document.getElementById('netCapacity').textContent);
+            const totalPoints = sprintBacklog.reduce((sum, t) => sum + t.points, 0);
+
+            // AI Insight Logic (Mocked)
+            let insight = `Sprint: ${sprint} for Team ${team}. Net capacity: ${netCapacity} Person-Days. Total estimated Story Points: ${totalPoints} points.`;
+            
+            if (totalPoints > (netCapacity * 2.5)) { 
+                insight += " **CRITICAL OVERLOAD RISK:** Estimated work far exceeds calculated capacity (Capacity/Points mismatch). Highly recommend removing or deferring tickets.";
+            } else if (totalPoints > (netCapacity * 2)) {
+                insight += " **Moderate Risk:** The workload is high. The AI recommends reserving a 10% buffer and ensuring critical path items are clearly defined.";
+            } else {
+                insight += " **Good Balance:** Capacity and workload are well-aligned. The team has a sufficient buffer for emergent work.";
+            }
+
+            document.getElementById('insightText').textContent = insight;
+            alert('Capacity calculated and AI insights generated!');
+        }
+
+        function exportData() {
+            // This function would call the backend API to generate the Excel file.
+            alert(`Exporting planning data for ${document.getElementById('sprintName').value} (${document.getElementById('teamSelect').value}) to Excel... (Functionality Mocked)`);
+        }
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Expose functions globally for the HTML onclick handlers
+            window.loadTeamMembers = loadTeamMembers;
+            window.addLeave = addLeave;
+            window.addManualTicket = addManualTicket;
+            window.fetchTickets = fetchTickets;
+            window.calculateAndAnalyze = calculateAndAnalyze;
+            window.exportData = exportData;
+
+            loadTeamMembers(); // Initialize the UI with the default team (Alpha)
+            renderTicketReviewTable(); // Show the initial mock backlog
+        });
+    </script>
+</body>
+</html>

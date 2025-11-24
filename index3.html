@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sprint Capacity Planner</title>
+    <style>
+        /* Basic Styling for the Mock-up */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f9;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        h1 {
+            color: #1a202c;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #4a5568;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        .section-box {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        input[type="date"], input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4c51bf; /* Indigo */
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #5a62c7;
+        }
+        #insights {
+            border-left: 4px solid #4c51bf;
+            padding-left: 15px;
+            margin-top: 20px;
+            background-color: #f0f4ff;
+            color: #2d3748;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .summary-table th, .summary-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            text-align: left;
+        }
+        .summary-table th {
+            background-color: #edf2f7;
+            color: #2d3748;
+        }
+        .export-button-container {
+            text-align: right;
+            margin-top: 30px;
+        }
+        .ticket-list {
+            max-height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .ticket-item {
+            padding: 8px 0;
+            border-bottom: 1px dotted #e2e8f0;
+        }
+        .ticket-item:last-child {
+            border-bottom: none;
+        }
+        .ai-title {
+            color: #4c51bf;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚀 AI-Powered Sprint Planning Tool</h1>
+        <p>Use this tool to calculate team capacity, fetch tickets, and generate insights for your upcoming sprint.</p>
+
+        <div class="section-box">
+            <h2>🗓️ 1. Resource Planned Leaves</h2>
+            <div class="form-group">
+                <label for="resourceName">Resource Name</label>
+                <select id="resourceName">
+                    <option value="Alice">Alice</option>
+                    <option value="Bob">Bob</option>
+                    <option value="Charlie">Charlie</option>
+                    <option value="David">David</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="leaveDate">Planned Leave Date</label>
+                <input type="date" id="leaveDate">
+            </div>
+            <button onclick="addLeave()">➕ Add Leave</button>
+
+            <h3 style="font-size: 1.2rem; margin-top: 20px;">Current Leaves Submitted</h3>
+            <ul id="leaveList">
+                <li>Alice: 2025-12-05</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2>🎟️ 2. Tickets from External System (Mock Fetch)</h2>
+            <button onclick="fetchTickets()">🔁 Fetch Tickets from Ticket System API</button>
+            <div class="ticket-list" id="ticketList">
+                <div class="ticket-item">**TICKET-001**: Implement User Login (8 pts)</div>
+                <div class="ticket-item">**TICKET-002**: Fix Database Connection Bug (3 pts)</div>
+                <div class="ticket-item">**TICKET-003**: Optimize Image Upload Service (13 pts)</div>
+            </div>
+        </div>
+
+        <div class="section-box">
+            <h2>🧠 3. Capacity & AI Insights Summary</h2>
+            <button onclick="calculateAndAnalyze()">✨ Calculate Capacity & Generate AI Insights</button>
+            
+            <table class="summary-table" id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value (Mock Data)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Total Resources</td><td>4</td></tr>
+                    <tr><td>Sprint Days (2 Weeks)</td><td>10 Days</td></tr>
+                    <tr><td>Total Gross Capacity</td><td>40 Person-Days</td></tr>
+                    <tr><td>Total Planned Leaves</td><td id="totalLeaves">1 Day</td></tr>
+                    <tr><td>**Adjusted Net Capacity**</td><td id="netCapacity">**39 Person-Days**</td></tr>
+                </tbody>
+            </table>
+
+            <div id="insights">
+                <p class="ai-title">AI Sprint Insight:</p>
+                <p id="insightText">
+                    The AI suggests that given the large 'Optimize Image Upload' ticket (13 pts) and Bob's 2 days of leave (mock data), the team's effective capacity is highly utilized. **Recommendation:** Consider splitting TICKET-003 or assigning a dedicated pair to it. **Risk:** Only 1 day of capacity buffer remaining.
+                </p>
+            </div>
+        </div>
+
+        <div class="export-button-container">
+            <button onclick="exportData()">💾 Export Full Summary to Excel</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Mock Data Store ---
+        let leaves = [{ resource: 'Alice', date: '2025-12-05' }];
+        const mockTickets = [
+            { id: 'TICKET-001', summary: 'Implement User Login', points: 8 },
+            { id: 'TICKET-002', summary: 'Fix Database Connection Bug', points: 3 },
+            { id: 'TICKET-003', summary: 'Optimize Image Upload Service', points: 13 },
+            { id: 'TICKET-004', summary: 'Refactor Checkout API', points: 5 },
+            { id: 'TICKET-005', summary: 'Update Documentation', points: 2 },
+        ];
+
+        // --- Functions ---
+        
+        function renderLeaves() {
+            const list = document.getElementById('leaveList');
+            list.innerHTML = '';
+            leaves.forEach(leave => {
+                const li = document.createElement('li');
+                li.textContent = `${leave.resource}: ${leave.date}`;
+                list.appendChild(li);
+            });
+            document.getElementById('totalLeaves').textContent = `${leaves.length} Day${leaves.length === 1 ? '' : 's'}`;
+            // Re-calculate net capacity based on current leaves
+            const netCapacity = 40 - leaves.length; 
+            document.getElementById('netCapacity').textContent = `${netCapacity} Person-Days`;
+        }
+
+        function addLeave() {
+            const resource = document.getElementById('resourceName').value;
+            const date = document.getElementById('leaveDate').value;
+            
+            if (resource && date) {
+                leaves.push({ resource, date });
+                alert(`Leave added for ${resource} on ${date}.`);
+                renderLeaves();
+            } else {
+                alert('Please select a resource and a date.');
+            }
+        }
+
+        function fetchTickets() {
+            const list = document.getElementById('ticketList');
+            list.innerHTML = ''; // Clear existing list
+            
+            mockTickets.forEach(ticket => {
+                const div = document.createElement('div');
+                div.className = 'ticket-item';
+                div.textContent = `**${ticket.id}**: ${ticket.summary} (${ticket.points} pts)`;
+                list.appendChild(div);
+            });
+            alert('Mock Tickets (5) fetched successfully from Ticket System API.');
+        }
+
+        function calculateAndAnalyze() {
+            // 1. Capacity Calculation (Mocked):
+            const totalLeaveDays = leaves.length;
+            const netCapacity = 40 - totalLeaveDays; 
+            
+            document.getElementById('totalLeaves').textContent = `${totalLeaveDays} Day${totalLeaveDays === 1 ? '' : 's'}`;
+            document.getElementById('netCapacity').textContent = `**${netCapacity} Person-Days**`;
+
+            // 2. AI Insight Generation (Mocked for Front-end Demo):
+            let insight = `The net capacity is ${netCapacity} Person-Days. The total story points of fetched tickets are ${mockTickets.reduce((sum, t) => sum + t.points, 0)} points.`;
+            
+            if (netCapacity < 35) {
+                insight += " **CRITICAL RISK:** Capacity is very low due to high planned leaves. Focus only on P1 items.";
+            } else if (netCapacity < 39) {
+                insight += " **Moderate Risk:** The capacity buffer is slim. Ensure no resource is overloaded. The AI recommends pulling in 30 points maximum this sprint.";
+            } else {
+                insight += " **Good Capacity:** The team has a strong capacity buffer. Consider pulling a small stretch goal.";
+            }
+
+            document.getElementById('insightText').textContent = insight;
+            alert('Capacity calculated and AI insights generated!');
+        }
+
+        function exportData() {
+            // In a real application, this would call the back-end /api/export endpoint.
+            // The back-end would generate the Excel file with the capacity data, ticket list, 
+            // and the generated AI insights, and then send the file back to the browser.
+            alert('Exporting data to Excel... (Functionality Mocked. Backend API call required in a real setup.)');
+        }
+
+        // Initialize the mock-up
+        document.addEventListener('DOMContentLoaded', renderLeaves);
+
+    </script>
+
+</body>
+</html>
